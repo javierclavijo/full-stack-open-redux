@@ -1,3 +1,6 @@
+import anecdoteService from "../services/anecdoteService";
+import {setNotification} from "./notificationReducer";
+
 const anecdotesAtStart = [
     'If it hurts, do it more often',
     'Adding manpower to a late software project makes it later!',
@@ -17,23 +20,43 @@ const asObject = (anecdote) => {
     }
 }
 
-const initialState = anecdotesAtStart.map(asObject)
+const initialState = []
 
-export const voteAnecdote = (id) => {
-    return {
-        type: "VOTE",
-        data: {id}
+export const voteAnecdote = (anecdote) => {
+    return async dispatch => {
+        const newAnecdote = {...anecdote, votes: anecdote.votes + 1}
+        await anecdoteService.update(newAnecdote)
+        dispatch({
+            type: "VOTE",
+            data: anecdote
+        })
+        dispatch(setNotification(`You voted for '${anecdote.content}'`, 5))
     }
 }
 
 export const newAnecdote = (anecdote) => {
-    return {
-        type: 'NEW_ANECDOTE',
-        data: {
+    return async dispatch => {
+        const anecdoteBody = {
             content: anecdote,
             id: getId(),
             votes: 0
         }
+        await anecdoteService.createNew(anecdoteBody)
+        dispatch({
+            type: 'NEW_ANECDOTE',
+            data: anecdoteBody
+        })
+        dispatch(setNotification(`Added anecdote '${anecdote}'`, 5))
+    }
+}
+
+export const initializeAnecdotes = () => {
+    return async dispatch => {
+        const anecdotes = await anecdoteService.getAll()
+        dispatch({
+            type: 'INITIALIZE',
+            data: anecdotes
+        })
     }
 }
 
@@ -47,6 +70,8 @@ const reducer = (state = initialState, action) => {
             return newState
         case 'NEW_ANECDOTE':
             return [...state, action.data]
+        case 'INITIALIZE':
+            return action.data
         default:
             return state
     }
